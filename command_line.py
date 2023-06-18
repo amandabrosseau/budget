@@ -71,6 +71,14 @@ def prompt_add_transaction():
 
     print("Transaction added successfully.")
 
+def prompt_add_category(name):
+    try:
+        trans.add_category(category_name)
+    except transaction_db.CategoryExistsError:
+        print("Category already exists.")
+
+    print("Category added successfully.")
+
 
 # Main program loop
 while True:
@@ -94,7 +102,7 @@ while True:
         trans.display_transactions()
     elif choice == '4':
         category_name = input("Enter category name: ")
-        trans.add_category(category_name)
+        prompt_add_category(category_name)
     elif choice == '5':
         categories = trans.get_categories()
         print("All Categories:")

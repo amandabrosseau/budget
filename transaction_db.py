@@ -1,6 +1,10 @@
 import sqlite3
 import datetime
 
+class CategoryExistsError(Exception):
+    "Raised when a category already exists"
+    pass
+
 class Transaction:
     
     def __init__(self, id, vendor, amount, category, memo, date):
@@ -54,13 +58,11 @@ class TransactionDb:
         # Check if the category already exists
         self.cursor.execute('SELECT * FROM categories WHERE LOWER(name)=?', (lowercase_name,))
         if self.cursor.fetchone():
-            print("Category already exists.")
-            return
+            raise CategoryExistsError
         
         # Insert the lowercase category name into the database
         self.cursor.execute('INSERT INTO categories (name) VALUES (?)', (lowercase_name,))
         self.conn.commit()
-        print("Category added successfully.")
     
     def remove_category(self, name):
         # Check if the category exists
