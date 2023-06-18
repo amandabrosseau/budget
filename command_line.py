@@ -1,4 +1,5 @@
 import transaction_db
+import datetime
 
 trans = transaction_db.TransactionDb()
 
@@ -36,6 +37,41 @@ def prompt_edit_transaction(transaction_id):
     else:
         print("No changes made to the transaction.")
 
+def prompt_add_transaction():
+    print("Enter transaction details:")
+    vendor = input("Vendor: ")
+    amount = float(input("Amount: "))
+    memo = input("Memo: ")
+    date = input("Enter Date (YYYY-MM-DD) or press ENTER for today's date: ")
+
+    if not date:
+        # Use today's date if no date is provided
+        date = datetime.date.today()
+    else:
+        # Parse the provided date
+        try:
+            date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date format. Transaction not added.")
+            return
+    
+    # Display existing categories and prompt for selection
+    categories = trans.get_categories()
+    print("Available Categories:")
+    for index, category in enumerate(categories, start=1):
+        print(f"{index}. {category}")
+    category_idx = int(input("Select a category (Enter the corresponding number): ")) - 1    
+
+    if category_idx < 0 or category_idx >= len(categories):
+        category = "Uncategorized"
+    else:
+        category = categories[category_idx]
+
+    trans.add_transaction(vendor, amount, category, memo, date)
+
+    print("Transaction added successfully.")
+
+
 # Main program loop
 while True:
     print("\nBudgeting App Menu:")
@@ -50,7 +86,7 @@ while True:
     choice = input("Enter your choice (1-7): ")
     
     if choice == '1':
-        trans.add_transaction()
+        prompt_add_transaction()
     elif choice == '2':
         transaction_id = input("Enter the ID of the transaction to edit: ")
         prompt_edit_transaction(transaction_id)

@@ -88,35 +88,7 @@ class TransactionDb:
         categories = [category.lower() for category in categories]  # Convert category names to lowercase
         return categories
     
-    def add_transaction(self):
-        print("Enter transaction details:")
-        vendor = input("Vendor: ")
-        amount = float(input("Amount: "))
-        memo = input("Memo: ")
-        date = input("Enter Date (YYYY-MM-DD) or press ENTER for today's date: ")
-
-        if not date:
-                # Use today's date if no date is provided
-                date = datetime.date.today()
-        else:
-            # Parse the provided date
-            try:
-                date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-            except ValueError:
-                print("Invalid date format. Transaction not added.")
-                return
-        
-        # Display existing categories and prompt for selection
-        categories = self.get_categories()
-        print("Available Categories:")
-        for index, category in enumerate(categories, start=1):
-            print(f"{index}. {category}")
-        category_index = int(input("Select a category (Enter the corresponding number): ")) - 1
-        
-        if category_index < 0 or category_index >= len(categories):
-            category = "Uncategorized"
-        else:
-            category = categories[category_index]
+    def add_transaction(self, vendor, amount, category, memo, date):
         
         # Insert the transaction into the database
         self.cursor.execute('''
@@ -124,7 +96,6 @@ class TransactionDb:
             VALUES (?, ?, ?, ?, ?)
         ''', (vendor, amount, category, memo, date))
         self.conn.commit()
-        print("Transaction added successfully.")
     
     def edit_transaction(self, transaction_id, vendor=None, amount=None, category=None, memo=None, date=None):
         # Retrieve the transaction from the database
