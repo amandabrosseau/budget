@@ -66,11 +66,10 @@ class TransactionDb:
     
     def remove_category(self, name):
         # Check if the category exists
-        self.cursor.execute('SELECT * FROM categories WHERE name=?', (name,))
+        self.cursor.execute('SELECT * FROM categories WHERE name=?', (name.lower(),))
         self.category = self.cursor.fetchone()
         if not self.category:
-            print("Category does not exist.")
-            return
+            raise CategoryExistsError
         
         category_id = self.category[0]
         
@@ -80,7 +79,6 @@ class TransactionDb:
         # Remove the category from the database
         self.cursor.execute('DELETE FROM categories WHERE id=?', (category_id,))
         self.conn.commit()
-        print("Category removed successfully.")
     
     def get_categories(self):
         # Retrieve categories from the database

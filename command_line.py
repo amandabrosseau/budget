@@ -76,9 +76,18 @@ def prompt_add_category(name):
         trans.add_category(category_name)
     except transaction_db.CategoryExistsError:
         print("Category already exists.")
+        return
 
     print("Category added successfully.")
 
+def prompt_remove_category(name):
+    try:
+        trans.remove_category(category_name)
+    except transaction_db.CategoryExistsError:
+        print("Category does not exist.")
+        return
+
+    print("Category removed successfully.")
 
 # Main program loop
 while True:
