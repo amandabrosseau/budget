@@ -1,5 +1,4 @@
 import sqlite3
-import datetime
 
 class CategoryExistsError(Exception):
     "Raised when a category already exists"
@@ -14,6 +13,16 @@ class Transaction:
         self.category = category
         self.memo = memo
         self.date = date
+
+    def print(self):
+        # Print the transaction details
+        print("Transaction Details:")
+        print(f"ID: {self.id}")
+        print(f"Vendor: {self.vendor}")
+        print(f"Amount: {self.amount}")
+        print(f"Category: {self.category}")
+        print(f"Memo: {self.memo}")
+        print(f"Date: {self.date}")
 
 class TransactionDb:
 
@@ -98,53 +107,24 @@ class TransactionDb:
         self.conn.commit()
     
     def edit_transaction(self, transaction_id, vendor=None, amount=None, category=None, memo=None, date=None):
-        # Retrieve the transaction from the database
-        old_trans = self.get_transaction(transaction_id)
-
-        if old_trans is None:
-            return
         
-        # Retrieve existing categories from the database
-        self.cursor.execute('SELECT name FROM categories')
-        categories = self.cursor.fetchall()
-        category_options = [f"{index}. {category[0]}" for index, category in enumerate(categories, start=1)]
-    
-        self.print_transaction(transaction_id)
-        
-
-        # Validate and update the vendor field
+        # Update the vendor field if needed
         if vendor:
             self.cursor.execute('UPDATE transactions SET vendor=? WHERE id=?', (vendor, transaction_id))
         
-        # Validate and update the amount field
+        # Update the amount field if needed
         if amount:
             self.cursor.execute('UPDATE transactions SET amount=? WHERE id=?', (amount, transaction_id))
         
-        # Validate and update the memo field
+        # Update the memo field if needed
         if memo:
             self.cursor.execute('UPDATE transactions SET memo=? WHERE id=?', (memo, transaction_id))
 
-        # Validate and update the date field
+        # Update the date field if needed
         if date:
             self.cursor.execute('UPDATE transactions SET date=? WHERE id=?', (date, transaction_id))
         
-        self.conn.commit()
-        print("Transaction updated successfully!")
-
-    
-    def print_transaction(self, transaction_id):
-        # Retrieve the transaction from the database
-        this_trans = self.get_transaction(transaction_id)
-    
-        # Print the transaction details
-        print("Transaction Details:")
-        print(f"ID: {this_trans.id}")
-        print(f"Vendor: {this_trans.vendor}")
-        print(f"Amount: {this_trans.amount}")
-        print(f"Category: {this_trans.category}")
-        print(f"Memo: {this_trans.memo}")
-        print(f"Date: {this_trans.date}")
-    
+        self.conn.commit()    
     
     def display_transactions(self):
         # Prompt for category selection
@@ -185,8 +165,7 @@ class TransactionDb:
     
         # Check if the transaction exists
         if not transaction:
-            print("Transaction not found.")
-            return
+            raise IndexError
 
         # Extract transaction details
         id = transaction[0]

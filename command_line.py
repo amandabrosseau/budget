@@ -7,6 +7,12 @@ def prompt_edit_transaction(transaction_id):
     # Fetch the transaction data
     old_trans = trans.get_transaction(transaction_id)
 
+    if old_trans is None:
+        print("Transaction does not exist")
+        return
+
+    old_trans.print()
+
     # Display prompt for each field
     print(f"ID: {transaction_id}")
     new_vendor = input(f"Update Vendor? (Press ENTER to leave as \"{old_trans.vendor}\")\n> ")
@@ -34,6 +40,7 @@ def prompt_edit_transaction(transaction_id):
 
     if new_vendor or new_amount or new_category or new_memo or new_date:
         trans.edit_transaction(transaction_id, new_vendor, new_amount, new_category_name, new_memo, new_date)
+        print("Transaction updated successfully!")
     else:
         print("No changes made to the transaction.")
 
