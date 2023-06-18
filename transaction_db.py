@@ -80,6 +80,7 @@ class TransactionDb:
         if not self.category:
             raise CategoryExistsError
         
+        # Retrieve the category ID
         category_id = self.category[0]
         
         # Update transactions with the specified category to "Uncategorized"
