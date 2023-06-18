@@ -1,6 +1,16 @@
 import sqlite3
 import datetime
 
+class Transaction:
+    
+    def __init__(self, id, vendor, amount, category, memo, date):
+        self.id = id
+        self.vendor = vendor
+        self.amount = amount
+        self.category = category
+        self.memo = memo
+        self.date = date
+
 class TransactionDb:
 
     def __init__(self):
@@ -116,21 +126,12 @@ class TransactionDb:
         self.conn.commit()
         print("Transaction added successfully.")
     
-    def edit_transaction(self, transaction_id):
+    def edit_transaction(self, transaction_id, vendor=None, amount=None, category=None, memo=None, date=None):
         # Retrieve the transaction from the database
-        self.cursor.execute('SELECT * FROM transactions WHERE id=?', (transaction_id,))
-        transaction = self.cursor.fetchone()
-        
-        # Check if the transaction exists
-        if not transaction:
-            print("Transaction not found.")
+        old_trans = self.get_transaction(transaction_id)
+
+        if old_trans is None:
             return
-        
-        # Extract transaction details
-        old_vendor = transaction[1]
-        old_amount = transaction[2]
-        old_category = transaction[3]
-        old_memo = transaction[4]
         
         # Retrieve existing categories from the database
         self.cursor.execute('SELECT name FROM categories')
@@ -139,73 +140,39 @@ class TransactionDb:
     
         self.print_transaction(transaction_id)
         
-        # Display prompt for each field
-        print(f"ID: {transaction_id}")
-        new_vendor = input(f"Update Vendor? (Press ENTER to leave as \"{old_vendor}\")\n> ")
-        new_amount = input(f"Update Amount? (Press ENTER to leave as \"{old_amount}\")\n> ")
+
+        # Validate and update the vendor field
+        if vendor:
+            self.cursor.execute('UPDATE transactions SET vendor=? WHERE id=?', (vendor, transaction_id))
         
-        # Display available categories
-        print("Available Categories:")
-        for option in category_options:
-            print(option)
+        # Validate and update the amount field
+        if amount:
+            self.cursor.execute('UPDATE transactions SET amount=? WHERE id=?', (amount, transaction_id))
         
-        new_category = input(f"Update Category? (Press ENTER to leave as \"{old_category}\")\n> ")
+        # Validate and update the memo field
+        if memo:
+            self.cursor.execute('UPDATE transactions SET memo=? WHERE id=?', (memo, transaction_id))
+
+        # Validate and update the date field
+        if date:
+            self.cursor.execute('UPDATE transactions SET date=? WHERE id=?', (date, transaction_id))
         
-        # Validate and update the category field
-        if new_category:
-            if new_category.isdigit() and int(new_category) in range(1, len(categories) + 1):
-                new_category_name = categories[int(new_category) - 1][0]
-                self.cursor.execute('UPDATE transactions SET category=? WHERE id=?', (new_category_name, transaction_id))
-            else:
-                print("Invalid category. Please select a valid category or press ENTER to leave as is.")
-        
-        new_memo = input(f"Update Memo? (Press ENTER to leave as \"{old_memo}\")\n> ")
-        
-        # Update the transaction in the database if any changes were made
-        if new_vendor or new_amount or new_memo:
-            # Validate and update the vendor field
-            if new_vendor:
-                self.cursor.execute('UPDATE transactions SET vendor=? WHERE id=?', (new_vendor, transaction_id))
-            
-            # Validate and update the amount field
-            if new_amount:
-                self.cursor.execute('UPDATE transactions SET amount=? WHERE id=?', (new_amount, transaction_id))
-            
-            # Validate and update the memo field
-            if new_memo:
-                self.cursor.execute('UPDATE transactions SET memo=? WHERE id=?', (new_memo, transaction_id))
-            
-            conn.commit()
-            print("Transaction updated successfully!")
-        else:
-            print("No changes made to the transaction.")
+        self.conn.commit()
+        print("Transaction updated successfully!")
+
     
     def print_transaction(self, transaction_id):
         # Retrieve the transaction from the database
-        self.cursor.execute('SELECT * FROM transactions WHERE id=?', (transaction_id,))
-        transaction = self.cursor.fetchone()
-    
-        # Check if the transaction exists
-        if not transaction:
-            print("Transaction not found.")
-            return
-    
-        # Extract transaction details
-        transaction_id = transaction[0]
-        vendor = transaction[1]
-        amount = transaction[2]
-        category = transaction[3]
-        memo = transaction[4]
-        date = transaction[5]
+        this_trans = self.get_transaction(transaction_id)
     
         # Print the transaction details
         print("Transaction Details:")
-        print(f"ID: {transaction_id}")
-        print(f"Vendor: {vendor}")
-        print(f"Amount: {amount}")
-        print(f"Category: {category}")
-        print(f"Memo: {memo}")
-        print(f"Date: {date}")
+        print(f"ID: {this_trans.id}")
+        print(f"Vendor: {this_trans.vendor}")
+        print(f"Amount: {this_trans.amount}")
+        print(f"Category: {this_trans.category}")
+        print(f"Memo: {this_trans.memo}")
+        print(f"Date: {this_trans.date}")
     
     
     def display_transactions(self):
@@ -240,3 +207,22 @@ class TransactionDb:
                 print("Date:", row[5])
                 print("-----------------------")
 
+    def get_transaction(self, id):
+        # Retrieve the transaction from the database
+        self.cursor.execute('SELECT * FROM transactions WHERE id=?', (id,))
+        transaction = self.cursor.fetchone()
+    
+        # Check if the transaction exists
+        if not transaction:
+            print("Transaction not found.")
+            return
+
+        # Extract transaction details
+        id = transaction[0]
+        vendor = transaction[1]
+        amount = transaction[2]
+        category = transaction[3]
+        memo = transaction[4]
+        date = transaction[5]
+
+        return Transaction( id, vendor, amount, category, memo, date)
