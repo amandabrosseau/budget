@@ -1,4 +1,5 @@
 import sqlite3
+import datetime
 
 class TransactionDb:
 
@@ -24,7 +25,8 @@ class TransactionDb:
                 vendor TEXT,
                 amount REAL,
                 category TEXT,
-                memo TEXT
+                memo TEXT,
+                t_date DATE NOT NULL DEFAULT (date('now'))
             )
         ''')
         self.conn.commit()
@@ -58,7 +60,7 @@ class TransactionDb:
             print("Category does not exist.")
             return
         
-        category_id = category[0]
+        category_id = self.category[0]
         
         # Update transactions with the specified category to "Uncategorized"
         self.cursor.execute('UPDATE transactions SET category="Uncategorized" WHERE category=?', (name,))
@@ -81,6 +83,18 @@ class TransactionDb:
         vendor = input("Vendor: ")
         amount = float(input("Amount: "))
         memo = input("Memo: ")
+        date = input("Enter Date (YYYY-MM-DD) or press ENTER for today's date: ")
+
+        if not date:
+                # Use today's date if no date is provided
+                date = datetime.date.today()
+        else:
+            # Parse the provided date
+            try:
+                date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                print("Invalid date format. Transaction not added.")
+                return
         
         # Display existing categories and prompt for selection
         categories = self.get_categories()
@@ -96,9 +110,9 @@ class TransactionDb:
         
         # Insert the transaction into the database
         self.cursor.execute('''
-            INSERT INTO transactions (vendor, amount, category, memo)
-            VALUES (?, ?, ?, ?)
-        ''', (vendor, amount, category, memo))
+            INSERT INTO transactions (vendor, amount, category, memo, t_date)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (vendor, amount, category, memo, date))
         self.conn.commit()
         print("Transaction added successfully.")
     
@@ -182,6 +196,7 @@ class TransactionDb:
         amount = transaction[2]
         category = transaction[3]
         memo = transaction[4]
+        date = transaction[5]
     
         # Print the transaction details
         print("Transaction Details:")
@@ -190,6 +205,7 @@ class TransactionDb:
         print(f"Amount: {amount}")
         print(f"Category: {category}")
         print(f"Memo: {memo}")
+        print(f"Date: {date}")
     
     
     def display_transactions(self):
@@ -221,5 +237,6 @@ class TransactionDb:
                 print("Amount:", row[2])
                 print("Category:", row[3])
                 print("Memo:", row[4])
+                print("Date:", row[5])
                 print("-----------------------")
 

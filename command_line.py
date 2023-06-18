@@ -1,6 +1,6 @@
-import budget_data
+import transaction_db
 
-trans = budget_data.TransactionDb()
+trans = transaction_db.TransactionDb()
 
 # Main program loop
 while True:
