@@ -129,6 +129,15 @@ class TransactionDb:
 
     def add_transaction(self, vendor, amount, category, memo, date):
 
+        # First, pull existing transactions and see if any are a match
+        db_trans = self.filter_transactions(vendor=vendor, amount=amount, category=category, memo=memo, date=date)
+
+        if db_trans is not None:
+            print("-------------------------------------------")
+            print(" Transaction already exists, skipping . . .")
+            print("-------------------------------------------")
+            return
+
         # Insert the transaction into the database
         self.cursor.execute('''
             INSERT INTO transactions (vendor, amount, category, memo, t_date)
@@ -230,6 +239,51 @@ class TransactionDb:
                 print("Memo:", row[4])
                 print("Date:", row[5])
                 print("-----------------------")
+
+    def filter_transactions(self, id=None, vendor=None, amount=None, category=None, memo=None, date=None):
+        query = 'SELECT * FROM transactions WHERE '
+        conditions = []
+        params = []
+
+        if id is not None:
+            conditions.append('id = ?')
+            params.append(str(id))
+        if vendor is not None:
+            conditions.append('vendor = ?')
+            params.append(str(vendor))
+        if amount is not None:
+            conditions.append('amount = ?')
+            params.append(str(amount))
+        if category is not None:
+            conditions.append('category = ?')
+            params.append(str(category))
+        if memo is not None:
+            conditions.append('memo = ?')
+            params.append(str(memo))
+        if date is not None:
+            conditions.append('t_date = ?')
+            params.append(str(date))
+
+        if conditions:
+            query += ' AND '.join(conditions)
+
+        self.cursor.execute(query, params)
+
+        transactions = self.cursor.fetchall()
+
+        return_trans = []
+
+        for transaction in transactions:
+            id = transaction[0]
+            vendor = transaction[1]
+            amount = Decimal(str(transaction[2]))
+            category = transaction[3]
+            memo = transaction[4]
+            date = transaction[5]
+
+            return_trans.append(Transaction(id,transaction[1], amount, category, memo, date))
+
+        return return_trans
 
     def get_transaction(self, id):
         # Retrieve the transaction from the database
