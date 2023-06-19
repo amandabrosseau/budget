@@ -1,8 +1,19 @@
 import transaction_db
 import datetime
 from decimal import Decimal
+import quicken
 
 trans = transaction_db.TransactionDb()
+
+def prompt_input_file():
+    file_path = 'activity.qfx'
+    all_import_trans = quicken.import_quicken_transactions(file_path)
+    for import_trans in all_import_trans:
+        print("----------------------------------------------------")
+        print(f"vendor: {import_trans.vendor}, amount: {float(import_trans.amount)}, memo: {import_trans.memo}")
+        print("----------------------------------------------------")
+        trans.add_transaction(import_trans.vendor, import_trans.amount, import_trans.category, import_trans.memo, import_trans.date)
+
 
 def prompt_edit_transaction(transaction_id):
     # Fetch the transaction data
@@ -100,6 +111,7 @@ def prompt_remove_category(name):
 def display_all_categories():
     category_balances = trans.get_category_balances()
 
+    print("------------------")
     print("Category Balances:")
     print("------------------")
 
@@ -120,9 +132,10 @@ while True:
     print("5. Display All Categories")
     print("6. Remove Category")
     print("7. Recalculate Category Balances")
-    print("8. Quit")
+    print("8. Import transactions from Quicken File (.qfx)")
+    print("9. Quit")
 
-    choice = input("Enter your choice (1-8): ")
+    choice = input("Enter your choice (1-9): ")
 
     if choice == '1':
         prompt_add_transaction()
@@ -143,6 +156,8 @@ while True:
         trans.recalculate_category_balances()
         print("Category balances successfuly recalculated")
     elif choice == '8':
+        prompt_input_file()
+    elif choice == '9':
         break
     else:
         print("Invalid choice. Please try again.")

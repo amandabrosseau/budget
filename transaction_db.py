@@ -7,7 +7,7 @@ class CategoryExistsError(Exception):
 
 class Transaction:
 
-    def __init__(self, id, vendor, amount, category, memo, date):
+    def __init__(self, id=None, vendor=None, amount=0, category=None, memo=None, date=None):
         self.id = id
         self.vendor = vendor
         self.amount = Decimal(str(amount))
@@ -37,10 +37,16 @@ class TransactionDb:
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT
+                name TEXT,
                 balance DECIMAL DEFAULT 0
             )
         ''')
+
+        # Check if "uncategorized" category exists, and create it if it doesn't
+        self.cursor.execute('SELECT * FROM categories WHERE name=?', ('uncategorized',))
+        if not self.cursor.fetchone():
+            self.cursor.execute('INSERT INTO categories (name) VALUES (?)', ('uncategorized',))
+
 
         # Create the transactions table if it doesn't exist
         self.cursor.execute('''
@@ -85,8 +91,11 @@ class TransactionDb:
         # Retrieve the category ID
         category_id = self.category[0]
 
-        # Update transactions with the specified category to "Uncategorized"
-        self.cursor.execute('UPDATE transactions SET category="Uncategorized" WHERE category=?', (name,))
+        # Update transactions with the specified category to "uncategorized"
+        self.cursor.execute('UPDATE transactions SET category="uncategorized" WHERE category=?', (name,))
+
+        # Full category rebalance
+        self.recalculate_category_balances()
 
         # Remove the category from the database
         self.cursor.execute('DELETE FROM categories WHERE id=?', (category_id,))
@@ -124,22 +133,31 @@ class TransactionDb:
         self.cursor.execute('''
             INSERT INTO transactions (vendor, amount, category, memo, t_date)
             VALUES (?, ?, ?, ?, ?)
-        ''', (vendor, amount, category, memo, date))
-
-        self.update_category_balance(category, amount)
+        ''', (str(vendor), str(amount), str(category).lower(), str(memo), date))
 
         self.conn.commit()
 
+        self.update_category_balance(category, amount)
+
+
     def update_category_balance(self, category, amount):
+        print(f"Attempting to update balance for category: {category} by amount: {amount}")
+
         # Retrieve the current balance for the category from the categories table
-        self.cursor.execute('SELECT balance FROM categories WHERE name=?', (category,))
-        current_balance = Decimal(str(self.cursor.fetchone()[0]))
+        self.cursor.execute('SELECT balance FROM categories WHERE name=?', (str(category).lower(),))
+        current_balance = self.cursor.fetchone()[0]
+
+        # If current balance doesn't exist, set to 0
+        if current_balance == None:
+            current_balance = Decimal(0)
+        else:
+            current_balance = Decimal(str(current_balance))
 
         # Calculate the updated balance by adding or subtracting the transaction amount
         updated_balance = current_balance + amount
 
         # Update the category's balance in the categories table
-        self.cursor.execute('UPDATE categories SET balance=? WHERE name=?', (updated_balance, category))
+        self.cursor.execute('UPDATE categories SET balance=? WHERE name=?', (str(updated_balance), category))
         self.conn.commit()
 
     def recalculate_category_balances(self):
@@ -152,7 +170,7 @@ class TransactionDb:
           balance = Decimal(result[0] or 0)
 
           # Update the category's balance in the categories table
-          self.cursor.execute('UPDATE categories SET balance=? WHERE name=?', (balance, category))
+          self.cursor.execute('UPDATE categories SET balance=? WHERE name=?', (str(balance), category))
 
         self.conn.commit()
 
@@ -201,7 +219,9 @@ class TransactionDb:
         if len(rows) == 0:
             print("No transactions found.")
         else:
+            print("-------------------------")
             print("Transactions:")
+            print("-------------------------")
             for row in rows:
                 print("ID:", row[0])
                 print("Vendor:", row[1])
