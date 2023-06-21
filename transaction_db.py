@@ -1,15 +1,16 @@
 import sqlite3
 from decimal import Decimal
 
-class CategoryExistsError(Exception):
+class EntryExistsError(Exception):
     "Raised when a category already exists"
     pass
 
 class Transaction:
 
-    def __init__(self, id=None, vendor=None, amount=0, category=None, memo=None, date=None):
+    def __init__(self, id=None, account=None, vendor=None, amount=0, category=None, memo=None, date=None):
         self.id = id
         self.vendor = vendor
+        self.account = account
         self.amount = Decimal(str(amount))
         self.category = category
         self.memo = memo
@@ -47,11 +48,20 @@ class TransactionDb:
         if not self.cursor.fetchone():
             self.cursor.execute('INSERT INTO categories (name) VALUES (?)', ('uncategorized',))
 
+        # Create the accounts table if it doesn't exist
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                balance DECIMAL DEFAULT 0
+            )
+        ''')
 
         # Create the transactions table if it doesn't exist
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account TEXT,
                 vendor TEXT,
                 amount DECIMAL,
                 category TEXT,
@@ -75,21 +85,34 @@ class TransactionDb:
         # Check if the category already exists
         self.cursor.execute('SELECT * FROM categories WHERE LOWER(name)=?', (lowercase_name,))
         if self.cursor.fetchone():
-            raise CategoryExistsError
+            raise EntryExistsError
 
         # Insert the lowercase category name into the database
         self.cursor.execute('INSERT INTO categories (name) VALUES (?)', (lowercase_name,))
         self.conn.commit()
 
+    def add_account(self, name):
+        # Convert the category name to lowercase
+        lowercase_name = name.lower()
+
+        # Check if the category already exists
+        self.cursor.execute('SELECT * FROM accounts WHERE LOWER(name)=?', (lowercase_name,))
+        if self.cursor.fetchone():
+            raise EntryExistsError
+
+        # Insert the lowercase category name into the database
+        self.cursor.execute('INSERT INTO accounts (name) VALUES (?)', (lowercase_name,))
+        self.conn.commit()
+
     def remove_category(self, name):
         # Check if the category exists
         self.cursor.execute('SELECT * FROM categories WHERE name=?', (name.lower(),))
-        self.category = self.cursor.fetchone()
-        if not self.category:
-            raise CategoryExistsError
+        category = self.cursor.fetchone()
+        if not category:
+            raise EntryExistsError
 
         # Retrieve the category ID
-        category_id = self.category[0]
+        category_id = category[0]
 
         # Update transactions with the specified category to "uncategorized"
         self.cursor.execute('UPDATE transactions SET category="uncategorized" WHERE category=?', (name,))
@@ -101,6 +124,26 @@ class TransactionDb:
         self.cursor.execute('DELETE FROM categories WHERE id=?', (category_id,))
         self.conn.commit()
 
+    def remove_account(self, name):
+        # Check if the account exists
+        self.cursor.execute('SELECT * FROM accounts WHERE name=?', (name.lower(),))
+        account = self.cursor.fetchone()
+        if not account:
+            raise EntryExistsError
+
+        self.cursor.execute('DELETE FROM transactions WHERE account = ?', (account,))
+        self.conn.commit()
+
+        # Retrieve the category ID
+        category_id = account[0]
+
+        # Remove the account from the database
+        self.cursor.execute('DELETE FROM accounts WHERE id=?', (category_id,))
+        self.conn.commit()
+
+        # Full category rebalance
+        self.recalculate_category_balances()
+
     def get_categories(self):
         # Retrieve categories from the database
         self.cursor.execute('SELECT * FROM categories')
@@ -108,6 +151,13 @@ class TransactionDb:
         categories = [row[1] for row in rows]
         categories = [category.lower() for category in categories]  # Convert category names to lowercase
         return categories
+
+    def get_accounts(self):
+        # Retrieve categories from the database
+        self.cursor.execute('SELECT * FROM accounts')
+        rows = self.cursor.fetchall()
+        accounts = [row[1].lower() for row in rows]
+        return accounts
 
     def get_category_balances(self):
         self.cursor.execute("SELECT categories.id, categories.name, SUM(transactions.amount) "
@@ -127,12 +177,19 @@ class TransactionDb:
 
         return resolved_balances
 
-    def add_transaction(self, vendor, amount, category, memo, date):
+    def add_transaction(self, account, vendor, amount, category, memo, date):
 
-        # First, pull existing transactions and see if any are a match
+        # Check if account exists
+        self.cursor.execute('SELECT * FROM accounts WHERE name=?', (account.lower(),))
+        account = self.cursor.fetchone()
+        if not account:
+            print(f"Account {account} does not exist!")
+            raise EntryExistsError
+
+        # Pull existing transactions and see if any are a match
         db_trans = self.filter_transactions(vendor=vendor, amount=amount, category=category, memo=memo, date=date)
 
-        if db_trans is not None:
+        if db_trans:
             print("-------------------------------------------")
             print(" Transaction already exists, skipping . . .")
             print("-------------------------------------------")
@@ -140,14 +197,13 @@ class TransactionDb:
 
         # Insert the transaction into the database
         self.cursor.execute('''
-            INSERT INTO transactions (vendor, amount, category, memo, t_date)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (str(vendor), str(amount), str(category).lower(), str(memo), date))
+            INSERT INTO transactions (account, vendor, amount, category, memo, t_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (str(account).lower(), str(vendor), str(amount), str(category).lower(), str(memo), date))
 
         self.conn.commit()
 
         self.update_category_balance(category, amount)
-
 
     def update_category_balance(self, category, amount):
         print(f"Attempting to update balance for category: {category} by amount: {amount}")

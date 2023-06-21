@@ -5,14 +5,41 @@ import quicken
 
 trans = transaction_db.TransactionDb()
 
+def prompt_account_name():
+    # Display existing categories and prompt for selection
+    accounts = trans.get_accounts()
+    if accounts is None:
+        print("No accounts defined! Add a target account first!")
+        raise ValueError
+
+    print("----------------------------")
+    print("Available Accounts:")
+    print("----------------------------")
+    for index, account in enumerate(accounts, start=1):
+        print(f"{index}. {account}")
+    account_idx = str(input("Select an account (Enter the corresponding number): "))
+
+    if account_idx.isdigit() and int(account_idx) in range(1, len(accounts)+1):
+        return accounts[int(account_idx) - 1]
+    else:
+        print(f"Invalid account selected. Valid {range(1, len(accounts))}")
+        raise ValueError
+
 def prompt_input_file():
     file_path = 'activity.qfx'
+
+    try:
+        account_name = prompt_account_name()
+    except ValueError:
+        print("Please enter a valid account.")
+        return
+
     all_import_trans = quicken.import_quicken_transactions(file_path)
     for import_trans in all_import_trans:
         print("----------------------------------------------------")
         print(f"vendor: {import_trans.vendor}, amount: {float(import_trans.amount)}, memo: {import_trans.memo}")
         print("----------------------------------------------------")
-        trans.add_transaction(import_trans.vendor, import_trans.amount, import_trans.category, import_trans.memo, import_trans.date)
+        trans.add_transaction(account_name, import_trans.vendor, import_trans.amount, import_trans.category, import_trans.memo, import_trans.date)
 
 
 def prompt_edit_transaction(transaction_id):
@@ -57,6 +84,13 @@ def prompt_edit_transaction(transaction_id):
         print("No changes made to the transaction.")
 
 def prompt_add_transaction():
+
+    try:
+        account_name = prompt_account_name()
+    except ValueError:
+        print("Please enter a valid account.")
+        return
+
     print("Enter transaction details:")
     vendor = input("Vendor: ")
     amount = Decimal(input("Amount: "))
@@ -76,7 +110,9 @@ def prompt_add_transaction():
 
     # Display existing categories and prompt for selection
     categories = trans.get_categories()
+    print("----------------------------")
     print("Available Categories:")
+    print("----------------------------")
     for index, category in enumerate(categories, start=1):
         print(f"{index}. {category}")
     category_idx = int(input("Select a category (Enter the corresponding number): ")) - 1
@@ -86,15 +122,24 @@ def prompt_add_transaction():
     else:
         category = categories[category_idx]
 
-    trans.add_transaction(vendor, amount, category, memo, date)
+    trans.add_transaction(account_name, vendor, amount, category, memo, date)
 
     print("Transaction added successfully.")
 
 def prompt_add_category(name):
     try:
-        trans.add_category(category_name)
-    except transaction_db.CategoryExistsError:
+        trans.add_category(name)
+    except transaction_db.EntryExistsError:
         print("Category already exists.")
+        return
+
+    print("Category added successfully.")
+
+def prompt_add_account(name):
+    try:
+        trans.add_account(name)
+    except transaction_db.EntryExistsError:
+        print("Account already exists.")
         return
 
     print("Category added successfully.")
@@ -102,7 +147,7 @@ def prompt_add_category(name):
 def prompt_remove_category(name):
     try:
         trans.remove_category(category_name)
-    except transaction_db.CategoryExistsError:
+    except transaction_db.EntryExistsError:
         print("Category does not exist.")
         return
 
@@ -133,9 +178,10 @@ while True:
     print("6. Remove Category")
     print("7. Recalculate Category Balances")
     print("8. Import transactions from Quicken File (.qfx)")
-    print("9. Quit")
+    print("9. Add account")
+    print("10. Quit")
 
-    choice = input("Enter your choice (1-9): ")
+    choice = input("Enter your choice (1-10): ")
 
     if choice == '1':
         prompt_add_transaction()
@@ -158,6 +204,9 @@ while True:
     elif choice == '8':
         prompt_input_file()
     elif choice == '9':
+        account_name = input("Enter account name: ")
+        prompt_add_account(account_name)
+    elif choice == '10':
         break
     else:
         print("Invalid choice. Please try again.")
