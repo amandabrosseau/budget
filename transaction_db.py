@@ -5,6 +5,10 @@ class EntryExistsError(Exception):
     "Raised when a category already exists"
     pass
 
+class TransactionExists(Exception):
+    "Raised when a transaction already exists"
+    pass
+
 class Transaction:
 
     def __init__(self, id=None, account=None, vendor=None, amount=0, category=None, memo=None, date=None):
@@ -186,6 +190,9 @@ class TransactionDb:
             print(f"Account {account} does not exist!")
             raise EntryExistsError
 
+        account_name = account[1]
+        print(f"{account_name}")
+
         # Pull existing transactions and see if any are a match
         db_trans = self.filter_transactions(vendor=vendor, amount=amount, category=category, memo=memo, date=date)
 
@@ -193,13 +200,13 @@ class TransactionDb:
             print("-------------------------------------------")
             print(" Transaction already exists, skipping . . .")
             print("-------------------------------------------")
-            return
+            raise TransactionExists
 
         # Insert the transaction into the database
         self.cursor.execute('''
             INSERT INTO transactions (account, vendor, amount, category, memo, t_date)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (str(account).lower(), str(vendor), str(amount), str(category).lower(), str(memo), date))
+        ''', (str(account_name).lower(), str(vendor), str(amount), str(category).lower(), str(memo), date))
 
         self.conn.commit()
 
@@ -289,11 +296,12 @@ class TransactionDb:
             print("-------------------------")
             for row in rows:
                 print("ID:", row[0])
-                print("Vendor:", row[1])
-                print("Amount:", float(row[2]))
-                print("Category:", row[3])
-                print("Memo:", row[4])
-                print("Date:", row[5])
+                print("Account:", row[1])
+                print("Vendor:", row[2])
+                print("Amount:", float(row[3]))
+                print("Category:", row[4])
+                print("Memo:", row[5])
+                print("Date:", row[6])
                 print("-----------------------")
 
     def filter_transactions(self, id=None, vendor=None, amount=None, category=None, memo=None, date=None):
@@ -331,13 +339,14 @@ class TransactionDb:
 
         for transaction in transactions:
             id = transaction[0]
-            vendor = transaction[1]
-            amount = Decimal(str(transaction[2]))
-            category = transaction[3]
-            memo = transaction[4]
-            date = transaction[5]
+            account = transaction[1]
+            vendor = transaction[2]
+            amount = Decimal(str(transaction[3]))
+            category = transaction[4]
+            memo = transaction[5]
+            date = transaction[6]
 
-            return_trans.append(Transaction(id,transaction[1], amount, category, memo, date))
+            return_trans.append(Transaction(id, account, vendor, amount, category, memo, date))
 
         return return_trans
 

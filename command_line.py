@@ -122,7 +122,10 @@ def prompt_add_transaction():
     else:
         category = categories[category_idx]
 
-    trans.add_transaction(account_name, vendor, amount, category, memo, date)
+    try:
+        trans.add_transaction(account_name, vendor, amount, category, memo, date)
+    except transaction_db.TransactionExists:
+        return
 
     print("Transaction added successfully.")
 
